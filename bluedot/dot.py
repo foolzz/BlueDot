@@ -30,6 +30,8 @@ class Dot:
         self._is_swiped_event = Event()
         self._is_double_pressed_event = Event()
 
+        self._when_command = None
+        self._when_command_background = False
         self._when_pressed = None
         self._when_pressed_background = False
         self._when_double_pressed = None
@@ -85,6 +87,57 @@ class Dot:
             return ``None``.
         """
         return self._position
+
+    @property
+    def when_command(self):
+        """
+        Sets or returns the function which is called when the button is pressed.
+
+        The function should accept 0 or 1 parameters, if the function accepts 1 parameter an
+        instance of :class:`BlueDotPosition` will be returned representing where the button was pressed.
+
+        The following example will print a message to the screen when the button is pressed::
+
+            from bluedot import BlueDot
+
+            def dot_was_pressed():
+                print("The button was pressed")
+
+            bd = BlueDot()
+            bd.when_command = dot_was_pressed
+
+        This example shows how the position of where the button was pressed can be obtained::
+
+            from bluedot import BlueDot
+
+            def dot_was_pressed(pos):
+                print("The button was pressed at pos x={} y={}".format(pos.x, pos.y))
+
+            bd = BlueDot()
+            bd.when_command = dot_was_pressed
+
+        The function will be run in the same thread and block, to run in a separate 
+        thread use `set_when_command(function, background=True)`
+        """
+        return self._when_command
+
+    @when_command.setter
+    def when_command(self, value):
+        self.set_when_command(value)
+        
+    def set_when_command(self, callback, background=False):
+        """
+        Sets the function which is called when the button is pressed.
+        
+        :param Callable callback:
+            The function to call, setting to `None` will stop the callback.
+
+        :param bool background:
+            If set to `True` the function will be run in a separate thread 
+            and it will return immediately. The default is `False`.
+        """
+        self._when_command = callback
+        self._when_command_background = background
 
     @property
     def when_pressed(self):
@@ -656,6 +709,9 @@ class BlueDotButton(Dot):
             :attr:`interaction` will return ``None``.
         """
         return self._interaction
+
+    def command(self, command):
+        return
 
     def press(self, position):
         """
@@ -1310,7 +1366,10 @@ class BlueDot(Dot):
             # protocol check
             elif operation == "3":
                 self._check_protocol_version(params[0], params[1])
-
+            elif operation == "10":
+                command = params[0]
+                value = params[1]
+                self._process_command(command, value)
             else:
                 # operation not identified...  
                 warnings.warn("Data received for an unknown operation.\n{}".format(command))
@@ -1327,6 +1386,9 @@ class BlueDot(Dot):
         button = self._get_button((col, row))
         
         return button, position
+
+    def _process_command(self, command, value):
+        self.when_command(command)
 
     def _process_press(self, button, position):
         # was the button double pressed?
