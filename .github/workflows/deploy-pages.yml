@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - cursor/chojuk-chopa-homepage-2967
   workflow_dispatch:
 
 permissions:
